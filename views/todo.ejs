@@ -3,26 +3,40 @@
 <html>
     <head>
         <title>My todolist</title>
-        <style>
-            a {text-decoration: none; color: black;}
-        </style>
+        <link rel="stylesheet" type="text/css" href="/css/styles.css">
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
     </head>
 
     <body>
+   <div class="list">
         <h1>My Todo List</h1>
 
-        <ul>
-        <% todolist.forEach(function(todo, index) { %>
-            <li><%= todo %> <a href="/todo/delete/<%= index %>">✘</a> </li>
-        <% }); %>
-        </ul>
-
-        <form action="/todo/add/" method="post">
+        <form action="/todo/add/" method="post" class="c_form">
             <p>
-                <label for="newtodo">Things To Do?</label>
-                <input type="text" name="newtodo" id="newtodo" autofocus />
-                <input type="submit"  value="Add"  />
+                <label for="newtodo">Things To Do:</label>
+                <input type="text" name="newtodo" id="newtodo" autofocus /><br>
+                <label for="newdate">Due Date: </label>
+                <input type="date" name="newdate" id="newdate" />
+                <input type="submit"  value="Add"  id="add_btn" />
             </p>
         </form>
+        <form action="/todo/search/" method="post" class="c_form">
+            <p>
+                <label for="newtodo">Search: </label>
+                <input type="text" name="search_box" id="search_box" placeholder="Type Here..." value="<%= search_value %>"/>
+                <input type="submit"  value="Search"  id="search_btn" />
+            </p>
+        </form>
+        <hr>
+        <ul>
+        	<% todolist.forEach(function(todo, index) { %>
+            <li><%= todo %> 
+                <a href="/todo/delete/<%= index %>"><i class="fa fa-trash-o"></i></a> 
+                <p id="date" ><%= datelist[index] %></p>
+            </li>
+        	<% }); %>
+        </ul>
+   </div>
+
     </body>
 </html>
