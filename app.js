@@ -1,13 +1,40 @@
+if(process.env.NODE_ENV !== 'production'){
+	require('dotenv').config
+}
+
 var express = require('express');
-var session = require('cookie-session'); // Loads the piece of middleware for sessions
-var bodyParser = require('body-parser'); // Loads the piece of middleware for managing the settings
-var urlencodedParser = bodyParser.urlencoded({ extended: false });
-
 var app = express();
+//var session = require('cookie-session'); // Loads the piece of middleware for sessions
+var bodyParser = require('body-parser'); // Loads the piece of middleware for managing the settings\
+var flash=require('express-flash');
+var session= require('express-session')
+var bcrypt= require('bcryptjs');
+var  passport = require('passport');
+var initializePassport = require('./passport-config')
+var methodOverride = require('method-override')
 
+initializePassport(passport,
+	username => users.find(user => user.username === username),
+	id => users.find(user => user.id === id)
+)
+
+app.use(bodyParser.urlencoded({ extended: false }));
+
+var d = new Date();
+var curr_date=d.getFullYear()+'-'+('0'+ (d.getMonth() + 1)).slice(-2)+'-'+('0'+ d.getDate()).slice(-2);
+const users = [];
+app.use(flash());
 
 /* Using the sessions */
-app.use(session({secret: 'todotopsecret'}))
+app.use(session({
+	secret: process.env.SESSION_SECRET,
+	resave: false,
+	saveUninitialized: false
+}))
+
+app.use(passport.initialize())
+app.use(passport.session())
+app.use(methodOverride('_method'))
 
 app.use(express.static(__dirname + '/public'));
 
@@ -21,15 +48,63 @@ app.use(function(req, res,next){
     next();
 })
 
+app.get('/login',checkNotAuthenticated, function(req,res){
+	res.render('login.ejs')
+})
+
+app.get('/register',checkNotAuthenticated,function(req,res){
+	res.render('register.ejs')
+})
+
+app.post('/login', checkNotAuthenticated, passport.authenticate('local',{
+	successRedirect: '/todo',
+	failureRedirect: '/login',
+	failureFlash: true
+}))
+
+app.post('/register',checkNotAuthenticated, async function(req,res){
+	try{
+		const hashedPassword = await bcrypt.hash(req.body.password,10)
+		users.push({
+			id: Date.now().toString(),
+			username: req.body.username,
+			password: hashedPassword
+		})
+		res.redirect('/login')
+	}
+	catch{
+		res.redirect('/register')
+	}
+})
+
+app.delete('/logout', (req,res)=> {
+	req.logOut()
+	res.redirect('/login')
+})
+
+function checkAuthenticated(req,res,next){
+	if(req.isAuthenticated()){
+		return next()
+	}
+	res.redirect('/login')
+}
+
+function checkNotAuthenticated(req,res,next){
+	if(req.isAuthenticated()){
+		return res.redirect('/todo')
+	}
+	next()
+}
+
 /* The to do list and the form are displayed */
-app.get('/todo', function(req, res) { 
+app.get('/todo',checkAuthenticated, function(req, res) { 
     res.render('todo.ejs', {todolist: req.session.todolist, datelist: req.session.datelist, search_value: ''});
 })
 
 /* Adding an item to the to do list */
-app.post('/todo/add/', urlencodedParser, function(req, res) {
+app.post('/todo/add/', function(req, res) {
 	let date= new Date();
-    let myDate= date.getFullYear()+'-'+('0'+ (date.getMonth() + 1)).slice(-2)+'-'+('0'+ date.getDate()).slice(-2);
+    let myDate= curr_date;
     if(req.body.newdate != ''){
     	myDate=req.body.newdate;
     }
@@ -40,7 +115,7 @@ app.post('/todo/add/', urlencodedParser, function(req, res) {
     res.redirect('/todo');
 })
 
-app.post('/todo/search/',urlencodedParser,function(req,res){
+app.post('/todo/search/',function(req,res){
 	req.session.tlist=[];
 	req.session.dlist=[];
 	for(let i=0;i<req.session.todolist.length;i++){
@@ -63,7 +138,7 @@ app.get('/todo/delete/:id', function(req, res) {
 
 /* Redirects to the to do list if the page requested is not found */
 app.use(function(req, res,next){
-    res.redirect('/todo');
+    res.redirect('/login');
 })
 
 app.listen(8080);   
