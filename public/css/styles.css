@@ -1,12 +1,22 @@
-a{
+
+
+body{
+	/*display: flex; */
+	justify-content: center;
+	margin: auto;
+	background-color: lightskyblue;
+	font-family: sans-serif;
+}
+
+.content {
+  max-width: 500px;
+  margin: auto;
+}
+
+.logout {
 	float: right;
 }
 
-body{
-	display: flex;
-	justify-content: center;
-	background-color: lightskyblue;
-}
 ul{
 	padding: 0px;
 }
@@ -17,15 +27,25 @@ li{
 	margin-bottom: 10px;
 	margin-left: 0px;
 	left: 0px;
-	font-size: 20px;
+	/*font-size: 20px; */
 }
-.list{
-	width: 500px;
+
+a.dele{
+	float: right;
 }
+
+
 #newdate{
 	margin-left: 30px;
 }
-#date{
+.date{
 	width: 100px;
-	font-size: 15px;
+	font-style: italic;
+	font-size: smaller;
+	color: green;
+
+}
+#flash{
+	color: red;
+	background-color: navy;
 }

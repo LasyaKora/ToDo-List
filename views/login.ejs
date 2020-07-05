@@ -1,27 +1,39 @@
 <!DOCTYPE html>
 <html>
-<body>
-<h1>Login</h1>
-<%  if(messages.error) {%>
-	<%= messages.error %>
-<% } %>
+	<head>
+		<title>My Todo List Login Page</title>
+	    <link rel="stylesheet" type="text/css" href="/css/styles.css">
+	</head>
 
-<form action="/login" method="POST">
+	<body><div class="content">
+		<h2>My Todo List Login</h2>
 
-<div>
-<label for="username">Username</label>
-<input type="text" id="username" name="username" required>
-</div>
 
-<div>
-<label for="password">Password</label>
-<input type="text" id="password" name="password" required>
-</div>
+		<p id="flash">
+			<%  if(messages.error) {%>
+				<%= messages.error %>
+			<% } %>
+		</p>
+		
+		
+			<form action="/login" method="POST">
 
-<input type="submit" value="Login">
+			
+				<label for="username">Username </label>
+				<input type="text" id="username" name="username" required>
+				<br>
 
-</form>
-<a href="/register">Register</a>
+			
+				<label for="password">Password</label>
+				<input type="text" id="password" name="password" required>
+				<br>
 
-</body>
+				<input type="submit" value="Login">
+
+			</form>
+		
+		<br> 
+		<a href="/register">Register</a>
+
+	</div></body>
 </html>

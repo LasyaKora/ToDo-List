@@ -8,12 +8,12 @@
     </head>
 
     <body>
-   <div class="list">
-    <form action="/logout?_method=DELETE" method="POST">
+   <div class="content">
+    <form class="logout" action="/logout?_method=DELETE" method="POST">
         <button type="submit">Log Out</button>
     </form>
 
-        <h1>My Todo List</h1>
+        <h2>My Todo List</h2>
 
         <form action="/todo/add/" method="post" class="c_form">
             <p>
@@ -35,8 +35,8 @@
         <ul>
         	<% todolist.forEach(function(todo, index) { %>
             <li><%= todo %> 
-                <a href="/todo/delete/<%= index %>"><i class="fa fa-trash-o"></i></a> 
-                <p id="date" ><%= datelist[index] %></p>
+                <a class="dele" href="/todo/delete/<%= index %>"><i class="fa fa-trash-o"></i></a> 
+                <div class="date" ><%= datelist[index] %></div>
             </li>
         	<% }); %>
         </ul>

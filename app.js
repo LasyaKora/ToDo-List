@@ -1,11 +1,6 @@
-if(process.env.NODE_ENV !== 'production'){
-	require('dotenv').config
-}
-
 var express = require('express');
 var app = express();
-//var session = require('cookie-session'); // Loads the piece of middleware for sessions
-var bodyParser = require('body-parser'); // Loads the piece of middleware for managing the settings\
+var bodyParser = require('body-parser'); // Loads the piece of middleware for managing the settings
 var flash=require('express-flash');
 var session= require('express-session')
 var bcrypt= require('bcryptjs');
@@ -13,21 +8,17 @@ var  passport = require('passport');
 var initializePassport = require('./passport-config')
 var methodOverride = require('method-override')
 
-initializePassport(passport,
-	username => users.find(user => user.username === username),
-	id => users.find(user => user.id === id)
-)
 
+const users = [];
 app.use(bodyParser.urlencoded({ extended: false }));
 
 var d = new Date();
 var curr_date=d.getFullYear()+'-'+('0'+ (d.getMonth() + 1)).slice(-2)+'-'+('0'+ d.getDate()).slice(-2);
-const users = [];
 app.use(flash());
 
 /* Using the sessions */
 app.use(session({
-	secret: process.env.SESSION_SECRET,
+	secret: 'lasyasecret',
 	resave: false,
 	saveUninitialized: false
 }))
@@ -48,6 +39,12 @@ app.use(function(req, res,next){
     next();
 })
 
+initializePassport(
+	passport,
+	username => users.find(user => user.username === username),
+	id => users.find(user => user.id === id)
+)
+
 app.get('/login',checkNotAuthenticated, function(req,res){
 	res.render('login.ejs')
 })
@@ -62,6 +59,9 @@ app.post('/login', checkNotAuthenticated, passport.authenticate('local',{
 	failureFlash: true
 }))
 
+/* Registration Code
+
+*/
 app.post('/register',checkNotAuthenticated, async function(req,res){
 	try{
 		const hashedPassword = await bcrypt.hash(req.body.password,10)
@@ -72,7 +72,7 @@ app.post('/register',checkNotAuthenticated, async function(req,res){
 		})
 		res.redirect('/login')
 	}
-	catch{
+	catch(err){
 		res.redirect('/register')
 	}
 })
@@ -116,15 +116,15 @@ app.post('/todo/add/', function(req, res) {
 })
 
 app.post('/todo/search/',function(req,res){
-	req.session.tlist=[];
-	req.session.dlist=[];
+	let tlist=[];
+	let dlist=[];
 	for(let i=0;i<req.session.todolist.length;i++){
 		if(req.session.todolist[i].toUpperCase().indexOf(req.body.search_box.toUpperCase())!=-1){
 			req.session.tlist.push(req.session.todolist[i]);
 			req.session.dlist.push(req.session.datelist[i]);
 		}
 	}
-	res.render('todo.ejs', {todolist: req.session.tlist, datelist: req.session.dlist, search_value: req.body.search_box});
+	res.render('todo.ejs', {todolist: tlist, datelist: dlist, search_value: req.body.search_box});
 })
 
 /* Deletes an item from the to do list */

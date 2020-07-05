@@ -1,18 +1,27 @@
-<h1>Register</h1>
+<html>
+<head>
+	<title>My Todo List User Registration</title>
+    <link rel="stylesheet" type="text/css" href="/css/styles.css">
+</head>
+<body><div class="content">
+	<h2>My Todo List User Registration</h2>
 
-<form action="/register" method="POST">
+	<form action="/register" method="POST">
 
-<div>
-<label for="username">Username</label>
-<input type="text" id="username" name="username" required>
-</div>
+	
+		<label for="username">Username</label>
+		<input type="text" id="username" name="username" required>
+		<br>
 
-<div>
-<label for="password">Password</label>
-<input type="text" id="password" name="password" required>
-</div>
+		<label for="password">Password</label>
+		<input type="text" id="password" name="password" required>
+		<br>
 
-<input type="submit" value="Register">
+		<input type="submit" value="Register">
 
-</form>
-<a href="/login">Register</a>
+	</form>
+	
+	<a href="/login">Login</a>
+</div></body>
+
+</html>
