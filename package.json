@@ -14,5 +14,10 @@
     "passport": "^0.4.1",
     "passport-local": "^1.0.0"
   },
-  "description": "A very basic to do list manager"
+  "description": "A very basic to do list manager",
+  "devDependencies": {
+    "grunt": "^1.2.0",
+    "grunt-nodemon": "^0.4.2",
+    "nodemon": "^2.0.4"
+  }
 }

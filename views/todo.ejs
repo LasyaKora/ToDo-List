@@ -13,7 +13,7 @@
         <button type="submit">Log Out</button>
     </form>
 
-        <h2>My Todo List</h2>
+        <h2>My ToDo List</h2>
 
         <form action="/todo/add/" method="post" class="c_form">
             <p>
@@ -34,9 +34,9 @@
         <hr>
         <ul>
         	<% todolist.forEach(function(todo, index) { %>
-            <li><%= todo %> 
+            <li><%= todo.todoText %> 
                 <a class="dele" href="/todo/delete/<%= index %>"><i class="fa fa-trash-o"></i></a> 
-                <div class="date" ><%= datelist[index] %></div>
+                <div class="date" ><%= todo.dueDate %></div>
             </li>
         	<% }); %>
         </ul>
