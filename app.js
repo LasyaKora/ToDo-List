@@ -7,20 +7,15 @@ var bcrypt= require('bcryptjs');
 var  passport = require('passport');
 var initializePassport = require('./passport-config')
 var methodOverride = require('method-override')
+var mysql=require('mysql')
+var dbconfig = require('./database');
+var connection = mysql.createConnection(dbconfig.connection);
 
+connection.query('USE ' + dbconfig.database);
 
-var users = [];
-/*if (typeof(req.session.users) == 'undefined') {
-        req.session.users = [];
-        
-    }
-users = req.session.users;*/
 
 app.use(bodyParser.urlencoded({ extended: false }));
-
-
 app.use(flash());
-
 /* Using the sessions */
 app.use(session({
 	secret: 'lasyasecret',
@@ -31,64 +26,17 @@ app.use(session({
     },
 	rolling: true
 }))
-
 app.use(passport.initialize())
 app.use(passport.session())
 app.use(methodOverride('_method'))
-
 app.use(express.static(__dirname + '/public'));
 
 /* If there is no to do list in the session, 
 we create an empty one in the form of an array before continuing */
 app.use(function(req, res,next){
 	//console.log('Use 1');
-	if (typeof(req.session.todo) == 'undefined') {
-        req.session.todo = [];
-    }
+	
     next();
-})
-
-initializePassport(
-	passport,
-	username => users.find(user => user.username === username),
-	id => users.find(user => user.id === id)
-)
-
-app.get('/login',checkNotAuthenticated, function(req,res){
-	res.render('login.ejs')
-})
-
-app.get('/register',checkNotAuthenticated,function(req,res){
-	res.render('register.ejs')
-})
-
-app.post('/login', checkNotAuthenticated, passport.authenticate('local',{
-	successRedirect: '/todo',
-	failureRedirect: '/login',
-	failureFlash: true
-}))
-
-/* Registration Code
-
-*/
-app.post('/register',checkNotAuthenticated, async function(req,res){
-	try{
-		const hashedPassword = await bcrypt.hash(req.body.password,10)
-		users.push({
-			id: Date.now().toString(),
-			username: req.body.username,
-			password: hashedPassword
-		})
-		res.redirect('/login')
-	}
-	catch(err){
-		res.redirect('/register')
-	}
-})
-
-app.delete('/logout', (req,res)=> {
-	req.logOut()
-	res.redirect('/login')
 })
 
 function checkAuthenticated(req,res,next){
@@ -107,43 +55,124 @@ function checkNotAuthenticated(req,res,next){
 	next();
 }
 
+function getToDoList(userId,callback) {
+		var result =[];
+		let sql_query= "select * from todolist where user_id = ?";
+		connection.query(sql_query,userId, function(err, res){
+		    if (err)  return callback(err);
+		    if(res.length){
+			    for(var i = 0; i<res.length; i++ ){     
+                    result.push(res[i]);
+        		}
+			}
+			callback(null, result);
+		})
+}
+
+function getToDoListSearch(userId, searchVar, callback) {
+		var result =[];
+		searchVar = '%' + searchVar.toUpperCase() + '%';
+		let sql_query= "select * from todolist where user_id = ? and UPPER(todoText) like ? " ;
+		connection.query(sql_query, [userId, searchVar], function(err, res){
+		    if (err)  {
+		    	console.log("In getToDoListSearch Error " + err); 
+		    	return callback(err);
+		    }
+		    if(res.length){
+			    for(var i = 0; i<res.length; i++ ){    
+			    	console.log("In getToDoListSearch for loop " + i + " -- " + res[i].user_id); 
+                    result.push(res[i]);
+        		}
+			}
+			callback(null, result);
+		})
+}
+
+
+
+initializePassport(passport);
+
+app.get('/login',checkNotAuthenticated, function(req,res){
+	res.render('login.ejs', {message:req.flash('loginMessage')})
+})
+
+app.get('/register',checkNotAuthenticated,function(req,res){
+	res.render('register.ejs',{message: req.flash('signupMessage')})
+})
+
+app.post('/login', checkNotAuthenticated, passport.authenticate('local-login',{
+	successRedirect: '/todo',
+	failureRedirect: '/login',
+	failureFlash: true
+}))
+
+/* Registration Code
+
+*/
+app.post('/register',checkNotAuthenticated, passport.authenticate('local-signup',{
+	successRedirect: '/login',
+	failureRedirect: '/register',
+	failureFlash: true
+}))
+
+app.delete('/logout', (req,res)=> {
+	req.logOut()
+	res.redirect('/login')
+})
+
+
 /* The to do list and the form are displayed */
-app.get('/todo',checkAuthenticated, function(req, res) { 
-    res.render('todo.ejs', {todolist: req.session.todo, search_value: ''});
+app.get('/todo',checkAuthenticated, function(req, resp) { 
+	var result
+	getToDoList(req.user.id,function(err,res){
+		resp.render('todo.ejs', {todolist: res, search_value: '', username: req.user.username});
+		result=res;
+		//console.log(res)
+	})
+    console.log(result)
 })
 
 /* Adding an item to the to do list */
 app.post('/todo/add/', function(req, res) {
-	var d = new Date();
-	var myDate=d.getFullYear()+'-'+('0'+ (d.getMonth() + 1)).slice(-2)+'-'+('0'+ d.getDate()).slice(-2);
+	var myDate = new Date();
+	
     if(req.body.newdate != ''){
     	myDate=req.body.newdate;
     }
-    if (req.body.newtodo != '') {
-    	req.session.todo.push({
-    	todoText:req.body.newtodo,
-    	dueDate: myDate});
-    }
+    var insertQuery = "INSERT INTO todolist (user_id, todoText, todoDate) values (?,?, ?)";
+
+    connection.query(insertQuery, [req.user.id,req.body.newtodo, myDate],
+      function(err, rows){
+      		if(err){
+      			throw err;
+      		}
+     });
+    
     res.redirect('/todo');
 })
 
 /* Searching an iten from the to do list*/
-app.post('/todo/search/',function(req,res){
-	let tlist=[];
-	for(let i=0;i<req.session.todo.length;i++){
-		if(req.session.todo[i].todoText.toUpperCase().indexOf(req.body.search_box.toUpperCase())!=-1){
-			tlist.push({
-				todoText: req.session.todo[i].todoText,
-				dueDate: req.session.todo[i].dueDate});
-		}
-	}
-	res.render('todo.ejs', {todolist: tlist, search_value: req.body.search_box});
+app.post('/todo/search/',function(req,resp){
+	getToDoListSearch(req.user.id, req.body.search_box, function(err,res){
+		resp.render('todo.ejs', {todolist: res, search_value: req.body.search_box, username: req.user.username});
+		
+	})
+	//res.render('todo.ejs', {todolist: tlist, search_value: req.body.search_box, username: req.user.username});
 })
 
 /* Deletes an item from the to do list */
 app.get('/todo/delete/:id', function(req, res) {
     if (req.params.id != '') {
-        req.session.todo.splice(req.params.id, 1);
+        //req.session.todo.splice(req.params.id, 1);
+        var delQuery = "delete  from todolist where todo_id = ? ";
+
+	    connection.query(delQuery, [req.params.id],
+	      function(err, rows){
+	      		if(err){
+	      			throw err;
+      		}
+     });
+
     }
     res.redirect('/todo');
 })
