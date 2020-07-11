@@ -34,9 +34,22 @@
         <hr>
         <ul>
         	<% todolist.forEach(function(todo, index) { %>
-            <li><%= todo.todoText %> 
-                <a class="dele" href="/todo/delete/<%= todo.todo_id %>"><i class="fa fa-trash-o"></i></a> 
-                <div class="date" ><%= todo.todoDate.toDateString() %></div>
+            <li>
+                 <form action="/todo/checkbox/" method="post">
+                    <input type="hidden" name="todo_id" value="<%= todo.todo_id %>">
+                <% if(todo.task_compl) {%>
+                       
+                            <input type="checkbox" class="cbx" name="cbx" checked  onChange="this.form.submit()">                      
+                <% } 
+                else { %>
+                        
+                            <input type="checkbox" class="cbx" name="cbx" onChange="this.form.submit()">                        
+                       
+                <% } %>
+                         <%= todo.todoText %> 
+                        <a class="dele" href="/todo/delete/<%= todo.todo_id %>"><i class="fa fa-trash-o" style="color:black"></i></a> 
+                        <div class="date" ><%= todo.todoDate.toDateString() %></div>
+                </form>
             </li>
         	<% }); %>
         </ul>

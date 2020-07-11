@@ -33,18 +33,13 @@ app.use(express.static(__dirname + '/public'));
 
 /* If there is no to do list in the session, 
 we create an empty one in the form of an array before continuing */
-app.use(function(req, res,next){
-	//console.log('Use 1');
-	
-    next();
-})
 
 function checkAuthenticated(req,res,next){
 	//console.log('Check authenticated')
 	if(req.isAuthenticated()){
 		return next()
 	}
-	next();
+	res.redirect('/login');
 }
 
 function checkNotAuthenticated(req,res,next){
@@ -57,7 +52,7 @@ function checkNotAuthenticated(req,res,next){
 
 function getToDoList(userId,callback) {
 		var result =[];
-		let sql_query= "select * from todolist where user_id = ?";
+		let sql_query= "select * from todolist where user_id = ? order by task_compl,todoDate";
 		connection.query(sql_query,userId, function(err, res){
 		    if (err)  return callback(err);
 		    if(res.length){
@@ -65,6 +60,7 @@ function getToDoList(userId,callback) {
                     result.push(res[i]);
         		}
 			}
+			//console.log(result);
 			callback(null, result);
 		})
 }
@@ -72,7 +68,7 @@ function getToDoList(userId,callback) {
 function getToDoListSearch(userId, searchVar, callback) {
 		var result =[];
 		searchVar = '%' + searchVar.toUpperCase() + '%';
-		let sql_query= "select * from todolist where user_id = ? and UPPER(todoText) like ? " ;
+		let sql_query= "select * from todolist where user_id = ? and UPPER(todoText) like ? order by task_compl,todoDate" ;
 		connection.query(sql_query, [userId, searchVar], function(err, res){
 		    if (err)  {
 		    	console.log("In getToDoListSearch Error " + err); 
@@ -80,7 +76,7 @@ function getToDoListSearch(userId, searchVar, callback) {
 		    }
 		    if(res.length){
 			    for(var i = 0; i<res.length; i++ ){    
-			    	console.log("In getToDoListSearch for loop " + i + " -- " + res[i].user_id); 
+			    	//console.log("In getToDoListSearch for loop " + i + " -- " + res[i].user_id); 
                     result.push(res[i]);
         		}
 			}
@@ -123,13 +119,33 @@ app.delete('/logout', (req,res)=> {
 
 /* The to do list and the form are displayed */
 app.get('/todo',checkAuthenticated, function(req, resp) { 
-	var result
+	//var result
 	getToDoList(req.user.id,function(err,res){
-		resp.render('todo.ejs', {todolist: res, search_value: '', username: req.user.username});
-		result=res;
+		if(!err){
+			resp.render('todo.ejs', {todolist: res, search_value: '', username: req.user.username});
+		}
+		//result=res;
 		//console.log(res)
 	})
-    console.log(result)
+    //console.log(result)
+})
+
+app.post('/todo/checkbox/',function(req,res){
+	var c = 0;
+	if(req.body.cbx){
+		c=1
+	}
+	var updateQuery = "UPDATE todolist SET task_compl= ? WHERE todo_id = ?"
+	connection.query(updateQuery, [c,req.body.todo_id],
+      function(err, rows){
+      		if(err){
+      			console.log(err.message);
+      			throw err;
+      		}
+      		console.log(rows);
+     });
+	console.log("In post Checkbox sql " + updateQuery );
+	res.redirect('/todo');
 })
 
 /* Adding an item to the to do list */
@@ -152,10 +168,11 @@ app.post('/todo/add/', function(req, res) {
 })
 
 /* Searching an iten from the to do list*/
-app.post('/todo/search/',function(req,resp){
+app.post('/todo/search/',checkAuthenticated,function(req,resp){
 	getToDoListSearch(req.user.id, req.body.search_box, function(err,res){
-		resp.render('todo.ejs', {todolist: res, search_value: req.body.search_box, username: req.user.username});
-		
+		if(!err){
+			resp.render('todo.ejs', {todolist: res, search_value: req.body.search_box, username: req.user.username});
+		}
 	})
 	//res.render('todo.ejs', {todolist: tlist, search_value: req.body.search_box, username: req.user.username});
 })
