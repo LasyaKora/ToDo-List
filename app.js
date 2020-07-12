@@ -7,11 +7,26 @@ var bcrypt= require('bcryptjs');
 var  passport = require('passport');
 var initializePassport = require('./passport-config')
 var methodOverride = require('method-override')
-var mysql=require('mysql')
-var dbconfig = require('./database');
-var connection = mysql.createConnection(dbconfig.connection);
 
-connection.query('USE ' + dbconfig.database);
+var db = require('./db');
+
+const collection ="todolist";
+
+
+db.connect((err)=>{
+	if(err){
+		console.log("Unable to connect to Database");
+		process.exit(1);
+	}
+	else{
+		app.listen(8080,()=>{
+			console.log("Connected to Database");
+			
+		}); 
+		
+	}
+	
+})
 
 
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -21,9 +36,9 @@ app.use(session({
 	secret: 'lasyasecret',
 	resave: true,
 	saveUninitialized: true,
-	 cookie : {
-        maxAge: 1000* 60 * 60 *24 * 365
-    },
+	cookie : {
+		maxAge: 1000* 60 * 60 *24 * 365
+	},
 	rolling: true
 }))
 app.use(passport.initialize())
@@ -50,38 +65,46 @@ function checkNotAuthenticated(req,res,next){
 	next();
 }
 
-function getToDoList(userId,callback) {
-		var result =[];
-		let sql_query= "select * from todolist where user_id = ? order by task_compl,todoDate";
-		connection.query(sql_query,userId, function(err, res){
-		    if (err)  return callback(err);
-		    if(res.length){
-			    for(var i = 0; i<res.length; i++ ){     
-                    result.push(res[i]);
-        		}
+/*function getToDoList(userId,callback) {
+
+	db.getDB().collection(collection).find({ user_id: userId }, async (err,result)=>{
+		if (err)  return callback(err);
+		else {
+			const res = await result.sort({task_compl: 1, todoDate: 1}).toArray();
+			console.log("Displaying ToDo List : " + res.length  + " -- " + res); 
+			callback(null, res);
 			}
-			//console.log(result);
+	});	
+}
+*/
+function getToDoList(userId,callback) {
+
+	db.getDB().collection(collection).find({ user_id: 
+		userId }).sort({task_compl: 1, todoDate: 1}).toArray(  (err,result)=>{
+		if (err)  return callback(err);
+		else {
+			//const res = await result.sort({task_compl: 1, todoDate: 1}).toArray();
+			//console.log("Displaying ToDo List : " + res.length  + " -- " + res); 
 			callback(null, result);
-		})
+			}
+	});	
 }
 
 function getToDoListSearch(userId, searchVar, callback) {
-		var result =[];
-		searchVar = '%' + searchVar.toUpperCase() + '%';
-		let sql_query= "select * from todolist where user_id = ? and UPPER(todoText) like ? order by task_compl,todoDate" ;
-		connection.query(sql_query, [userId, searchVar], function(err, res){
-		    if (err)  {
-		    	console.log("In getToDoListSearch Error " + err); 
-		    	return callback(err);
-		    }
-		    if(res.length){
-			    for(var i = 0; i<res.length; i++ ){    
-			    	//console.log("In getToDoListSearch for loop " + i + " -- " + res[i].user_id); 
-                    result.push(res[i]);
-        		}
-			}
+	//var result =[];
+	
+	//searchVar = "/.*"+searchVar.toUpperCase() +".*/i";
+	//let sql_query= "select * from todolist where user_id = ? and UPPER(todoText) like ? order by task_compl,todoDate" ;
+	db.getDB().collection(collection).find({ user_id: userId, 
+		todoText: new RegExp(searchVar, "i") }).sort({task_compl: 1,
+		 todoDate: 1}).toArray(  (err,result)=>{
+		if (err)  return callback(err);
+		else {
+			//const res = await result.sort({task_compl: 1, todoDate: 1}).toArray();
+			//console.log("Displaying Search  List : " + res.length  + searchVar + res); 
 			callback(null, result);
-		})
+			}
+	});	
 }
 
 
@@ -117,10 +140,11 @@ app.delete('/logout', (req,res)=> {
 })
 
 
+
 /* The to do list and the form are displayed */
 app.get('/todo',checkAuthenticated, function(req, resp) { 
 	//var result
-	getToDoList(req.user.id,function(err,res){
+	getToDoList(req.user._id,function(err,res){
 		if(!err){
 			resp.render('todo.ejs', {todolist: res, search_value: '', username: req.user.username});
 		}
@@ -131,47 +155,64 @@ app.get('/todo',checkAuthenticated, function(req, resp) {
 })
 
 app.post('/todo/checkbox/',function(req,res){
-	var c = 0;
+	var c = false;
 	if(req.body.cbx){
-		c=1
+		c=true;
 	}
-	var updateQuery = "UPDATE todolist SET task_compl= ? WHERE todo_id = ?"
-	connection.query(updateQuery, [c,req.body.todo_id],
-      function(err, rows){
-      		if(err){
-      			console.log(err.message);
-      			throw err;
-      		}
-      		console.log(rows);
-     });
-	console.log("In post Checkbox sql " + updateQuery );
-	res.redirect('/todo');
+	 var myquery = { _id: db.getPrimaryKey(req.body.todo_id) };
+  	var newvalues = { $set: {task_compl: c, upd_date: new Date() } };
+  	db.getDB().collection(collection).updateOne(myquery, newvalues,  (err,result)=>{
+		if (err)  {
+				console.log("In Cehck update " + err.message);
+				throw err;
+		}
+		else {
+			//const res = await result.toArray();
+			 console.log("Displaying Checkbox updated : " + req.body.todo_id);
+			//callback(null, res);
+			}
+			res.redirect('/todo');
+	});	
+	//console.log("Displaying Check update : " + req.body.todo_id);
 })
 
 /* Adding an item to the to do list */
 app.post('/todo/add/', function(req, res) {
 	var myDate = new Date();
 	
-    if(req.body.newdate != ''){
-    	myDate=req.body.newdate;
-    }
-    var insertQuery = "INSERT INTO todolist (user_id, todoText, todoDate) values (?,?, ?)";
+	if(req.body.newdate != ''){
+		myDate=req.body.newdate;
+	}
 
-    connection.query(insertQuery, [req.user.id,req.body.newtodo, myDate],
-      function(err, rows){
-      		if(err){
-      			throw err;
-      		}
-     });
-    
-    res.redirect('/todo');
+	db.getDB().collection(collection).insertOne({ user_id: req.user._id, todoText: req.body.newtodo, 
+			todoDate: new Date(myDate), task_compl: false, upd_date: new Date() }, (err,result)=>{
+		if(err){
+				console.log("In insert Todo list " + err.message);
+				throw err;
+		}
+		res.redirect('/todo');
+	});	
+
+	/*var insertQuery = "INSERT INTO todolist (user_id, todoText, todoDate) values (?,?, ?)";
+
+	connection.query(insertQuery, [req.user.id,req.body.newtodo, myDate],
+		function(err, rows){
+			if(err){
+				throw err;
+			}
+		});*/
+
 })
 
 /* Searching an iten from the to do list*/
 app.post('/todo/search/',checkAuthenticated,function(req,resp){
-	getToDoListSearch(req.user.id, req.body.search_box, function(err,res){
+	getToDoListSearch(req.user._id, req.body.search_box, function(err,res){
 		if(!err){
 			resp.render('todo.ejs', {todolist: res, search_value: req.body.search_box, username: req.user.username});
+		}
+		else
+		{
+			console.log("In Search Todo list " + err.message);
 		}
 	})
 	//res.render('todo.ejs', {todolist: tlist, search_value: req.body.search_box, username: req.user.username});
@@ -179,25 +220,22 @@ app.post('/todo/search/',checkAuthenticated,function(req,resp){
 
 /* Deletes an item from the to do list */
 app.get('/todo/delete/:id', function(req, res) {
-    if (req.params.id != '') {
-        //req.session.todo.splice(req.params.id, 1);
-        var delQuery = "delete  from todolist where todo_id = ? ";
-
-	    connection.query(delQuery, [req.params.id],
-	      function(err, rows){
-	      		if(err){
-	      			throw err;
-      		}
-     });
-
+	if (req.params.id != '') {
+		var res;
+        var myquery = { _id: db.getPrimaryKey(req.params.id) };
+        db.getDB().collection(collection).deleteOne(myquery, (err,result)=>{
+		if(err){
+				console.log("In Delete Todo list " + err.message);
+				throw err;
+		}
+		res.redirect('/todo');
+	});	
     }
-    res.redirect('/todo');
 })
 
 /* Redirects to the to do list if the page requested is not found */
 app.use(function(req, res,next){
 	//console.log('Use 2');
-    res.redirect('/login');
+	res.redirect('/login');
 })
 
-app.listen(8080);   
