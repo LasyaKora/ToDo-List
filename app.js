@@ -168,7 +168,7 @@ app.post('/todo/checkbox/',function(req,res){
 		}
 		else {
 			//const res = await result.toArray();
-			 console.log("Displaying Checkbox updated : " + req.body.todo_id);
+			//console.log("Displaying Checkbox updated : " + req.body.todo_id);
 			//callback(null, res);
 			}
 			res.redirect('/todo');
